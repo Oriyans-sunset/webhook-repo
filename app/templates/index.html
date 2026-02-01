@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Webhook Events</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 2em;
+      }
+      #events-list {
+        padding-left: 1em;
+      }
+      .event-item {
+        margin-bottom: 1em;
+        font-size: 1.1em;
+      }
+      .author {
+        font-weight: bold;
+      }
+      .action-push {
+        color: rgb(57, 173, 42);
+        font-weight: bold;
+      }
+      .action-pr {
+        color: #cfa901;
+        font-weight: bold;
+      }
+      .action-merge {
+        color: purple;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Repo Events List</h1>
+    <ul id="events-list"></ul>
+
+    <script>
+      const eventsList = document.getElementById("events-list");
+
+      async function fetchEvents() {
+        try {
+          const response = await fetch("/webhook/events");
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const events = await response.json();
+          updateEventList(events);
+        } catch (error) {
+          console.error("Could not fetch events:", error);
+        }
+      }
+
+      function formatEventSentence(event) {
+        const author = `<span class="author">"${event.author}"</span>`;
+        const date = new Date(event.timestamp).toLocaleString("en-UK", {
+          dateStyle: "long",
+          timeStyle: "short",
+        });
+
+        switch (event.action) {
+          case "push":
+            return `${author} <span class="action-push">pushed</span> to branch "${event.to_branch}" on <i>${date} UTC</i>.`;
+          case "pull_request":
+            return `${author} <span class="action-pr">submitted</span> a pull request from "${event.from_branch}" to "${event.to_branch}" on <i>${date} UTC</i>.`;
+          case "merge":
+            return `${author} <span class="action-merge">merged</span> branch "${event.from_branch}" into "${event.to_branch}" on <i>${date} UTC</i>.`;
+          default:
+            return `An unknown action was performed by ${author} on <i>${date}</i>.`;
+        }
+      }
+
+      function updateEventList(events) {
+        eventsList.innerHTML = "";
+
+        for (const event of events) {
+          const eventItem = document.createElement("li");
+          eventItem.className = "event-item";
+          eventItem.innerHTML = formatEventSentence(event);
+          eventsList.appendChild(eventItem);
+        }
+      }
+
+      fetchEvents();
+
+      // fetch every 15 seconds
+      setInterval(fetchEvents, 15000);
+    </script>
+  </body>
+</html>
